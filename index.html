@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="theme-color" content="#05070d">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Hinton</title>
+<style>
+  :root { --eye: #3fc2ee; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #05070d; color: #cfe9ff;
+    font-family: system-ui, sans-serif; overflow: hidden; }
+  #stage { height: 100%; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2vh; padding: 8px; }
+
+  #faceWrap { width: min(88vw, 62vh, 520px); aspect-ratio: 445 / 380; cursor: pointer;
+    transition: filter .3s; }
+  #faceWrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  /* ---- face parts ---- */
+  .ring { fill: var(--eye); }
+  .eye { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; }
+  @keyframes blink { 0%,93%,100% { transform: scaleY(1); } 96% { transform: scaleY(.08); } }
+  .iris { animation: glance 9s ease-in-out infinite; }
+  @keyframes glance {
+    0%,100% { transform: translate(0,0); } 20% { transform: translate(4px,-2px); }
+    45% { transform: translate(-4px,1px); } 70% { transform: translate(3px,3px); } }
+  .brow { transform-box: fill-box; transform-origin: center; transition: transform .3s; }
+  .mouth { transform-box: fill-box; transform-origin: 50% 0%; transition: transform .2s; }
+
+  body.listening #faceWrap { filter: drop-shadow(0 0 22px rgba(63,194,238,.7)); }
+  body.listening .brow { transform: translateY(-8px); }
+
+  body.thinking .iris { animation: lookside 1.4s ease-in-out infinite; }
+  @keyframes lookside { 0%,100% { transform: translateX(-6px); } 50% { transform: translateX(6px); } }
+  body.thinking #browR { transform: translateY(-9px) rotate(-8deg); }
+  body.thinking .mouth { transform: scale(.6,.7); }
+
+  body.speaking .mouth { animation: talk .36s ease-in-out infinite; }
+  @keyframes talk { 0%,100% { transform: scale(1,.5); } 50% { transform: scale(1.08,1.7); } }
+  body.speaking .brow { transform: translateY(-3px); }
+
+  body.confirming { --eye: #ffb020; }
+  body.confirming #faceWrap { filter: drop-shadow(0 0 22px rgba(255,176,32,.7)); }
+
+  /* ---- UI ---- */
+  #caption { min-height: 3em; padding: 0 8vw; text-align: center; opacity: .8; font-size: 1.05rem; }
+  #controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button { background: #0e1626; color: #cfe9ff; border: 1px solid #1c2c49; border-radius: 999px;
+    padding: 11px 20px; font-size: 1rem; }
+  button.on { background: #0b4a70; border-color: #3fc2ee; }
+  #confirmBox { display: none; flex-direction: column; align-items: center; gap: 8px; }
+  body.confirming #confirmBox { display: flex; }
+  #confirmBox code { background: #0e1626; padding: 6px 10px; border-radius: 8px; max-width: 90vw;
+    overflow-wrap: anywhere; }
+  #status { position: fixed; top: 8px; right: 12px; font-size: .75rem; opacity: .5; }
+  #expandBtn { display: none; position: fixed; top: 8px; left: 8px; padding: 4px 10px;
+    font-size: .9rem; opacity: .45; }
+
+  /* ---- compact: small round logo ---- */
+  body.compact #caption, body.compact #controls, body.compact #status { display: none; }
+  body.compact #expandBtn { display: block; }
+  body.compact #stage { gap: 6px; }
+  body.compact #faceWrap { width: min(94vw, 94vh); aspect-ratio: 1; border-radius: 50%;
+    overflow: hidden; border: 3px solid var(--eye);
+    background: radial-gradient(circle at 50% 38%, #f6f8fb, #aeb6c6); }
+</style>
+</head>
+<body class="idle">
+<div id="status">connecting…</div>
+<button id="expandBtn" title="Exit compact mode">⤢</button>
+
+<div id="stage">
+  <div id="faceWrap" title="Tap to start/stop listening">
+    <svg id="face" viewBox="0 0 445 380" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="helm" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9ced9"/>
+        </linearGradient>
+        <linearGradient id="visor" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#f1f3f8"/>
+          <stop offset="1" stop-color="#bcc3d0"/>
+        </linearGradient>
+      </defs>
+
+      <!-- ears -->
+      <rect x="6" y="172" width="38" height="66" rx="18" fill="#394259" stroke="#1c2233" stroke-width="4"/>
+      <rect x="401" y="172" width="38" height="66" rx="18" fill="#394259" stroke="#1c2233" stroke-width="4"/>
+
+      <!-- helmet -->
+      <path d="M222 10 C334 10 424 68 426 190 C428 296 372 356 222 356 C72 356 16 296 18 190 C20 68 110 10 222 10 Z"
+            fill="url(#helm)" stroke="#1c2233" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M150 30 Q222 6 296 30 L286 46 Q222 34 160 46 Z" fill="#fbb85c" stroke="#1c2233" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M70 100 Q222 58 376 100" fill="none" stroke="#1c2233" stroke-width="4" stroke-linecap="round"/>
+
+      <!-- visor -->
+      <path d="M92 112 Q222 78 352 112 Q392 130 390 215 Q384 318 222 322 Q60 318 54 215 Q52 130 92 112 Z"
+            fill="url(#visor)" stroke="#1c2233" stroke-width="11" stroke-linejoin="round"/>
+
+      <!-- eyebrows -->
+      <path id="browL" class="brow" d="M116 148 Q142 134 170 146" fill="none" stroke="#1c2233" stroke-width="5" stroke-linecap="round"/>
+      <path id="browR" class="brow" d="M274 146 Q302 134 328 148" fill="none" stroke="#1c2233" stroke-width="5" stroke-linecap="round"/>
+
+      <!-- left eye -->
+      <g transform="translate(139 222)"><g class="eye">
+        <circle r="57" fill="#1c2233"/>
+        <circle r="51" class="ring"/>
+        <g class="iris">
+          <circle r="44" cy="-4" fill="#1c2233"/>
+          <path d="M-34 14 Q0 42 34 14 Q30 36 0 40 Q-30 36 -34 14 Z" class="ring"/>
+          <circle cx="-25" cy="-20" r="8.5" fill="#fdd9a0"/>
+          <circle cx="-37" cy="-4" r="3.6" fill="#fdb99f"/>
+          <circle cx="-34" cy="6" r="2.6" fill="#fdb99f"/>
+          <circle cx="36" cy="2" r="2.6" class="ring"/>
+          <circle cx="32" cy="11" r="2.2" class="ring"/>
+        </g>
+      </g></g>
+
+      <!-- right eye -->
+      <g transform="translate(305 222)"><g class="eye">
+        <circle r="57" fill="#1c2233"/>
+        <circle r="51" class="ring"/>
+        <g class="iris">
+          <circle r="44" cy="-4" fill="#1c2233"/>
+          <path d="M-34 14 Q0 42 34 14 Q30 36 0 40 Q-30 36 -34 14 Z" class="ring"/>
+          <circle cx="-25" cy="-20" r="8.5" fill="#fdd9a0"/>
+          <circle cx="-37" cy="-4" r="3.6" fill="#fdb99f"/>
+          <circle cx="-34" cy="6" r="2.6" fill="#fdb99f"/>
+          <circle cx="36" cy="2" r="2.6" class="ring"/>
+          <circle cx="32" cy="11" r="2.2" class="ring"/>
+        </g>
+      </g></g>
+
+      <!-- nose dots -->
+      <circle cx="212" cy="283" r="4.5" fill="#e9a0a4"/>
+      <circle cx="237" cy="283" r="4.5" fill="#e9a0a4"/>
+
+      <!-- mouth -->
+      <g class="mouth">
+        <path d="M203 300 Q226 295 249 300 Q244 327 226 327 Q208 327 203 300 Z"
+              fill="#e8807f" stroke="#1c2233" stroke-width="3" stroke-linejoin="round"/>
+        <ellipse cx="226" cy="319" rx="9" ry="5" fill="#d85f67"/>
+      </g>
+    </svg>
+  </div>
+
+  <div id="caption">Tap Hinton's face or "Start listening"</div>
+
+  <div id="confirmBox">
+    <div>Run this command?</div><code id="cmd"></code>
+    <div style="display:flex;gap:12px"><button id="yes">Yes</button><button id="no">No</button></div>
+  </div>
+
+  <div id="controls">
+    <button id="listenBtn">Start listening</button>
+    <button id="wakeBtn">Wake word: off</button>
+    <button id="compactBtn">Compact</button>
+  </div>
+</div>
+
+<script>
+const NAME = "Hinton";
+// Words the speech recogniser might produce for "Hinton"
+const WAKES = ["hinton", "hilton", "henton", "hinten", "himton", "hinten"];
+const SPOKEN_NAME = "Hin-tun";   // how the voice should pronounce it; tweak if it sounds off
+
+const params = new URLSearchParams(location.search);
+let token = params.get("token") || localStorage.getItem("token") || prompt("Pairing token:") || "";
+localStorage.setItem("token", token);
+
+const $ = id => document.getElementById(id);
+const caption = t => $("caption").textContent = t;
+
+// ---------- state ----------
+let mode = "idle", confirming = false, compact = params.get("compact") === "1";
+let speaking = false, listening = false, wakeMode = false, pendingConfirm = false;
+function render() {
+  document.body.className = [mode, confirming ? "confirming" : "", compact ? "compact" : ""].join(" ");
+  $("face").setAttribute("preserveAspectRatio", compact ? "xMidYMid slice" : "xMidYMid meet");
+}
+const setState = s => { mode = s; render(); };
+render();
+
+// ---------- WebSocket ----------
+let ws;
+function connect() {
+  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws?token=${encodeURIComponent(token)}`);
+  ws.onopen = () => $("status").textContent = "connected";
+  ws.onclose = e => {
+    $("status").textContent = e.code === 4401 ? "bad token" : "reconnecting…";
+    if (e.code === 4401) { localStorage.removeItem("token"); caption("Wrong pairing token. Reload with ?token=..."); return; }
+    setTimeout(connect, 1500);
+  };
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.type === "state") { if (!speaking) setState(m.value === "idle" && listening ? "listening" : m.value); }
+    else if (m.type === "say") speak(m.text);
+    else if (m.type === "confirm") askConfirm(m.cmd);
+  };
+}
+connect();
+const send = o => ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
+
+// ---------- Speech out ----------
+function speak(text) {
+  caption(text);
+  stopRec();
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/hinton/gi, SPOKEN_NAME));
+  u.onstart = () => { speaking = true; setState("speaking"); };
+  u.onend = u.onerror = () => {
+    speaking = false; setState(listening ? "listening" : "idle");
+    if (listening) startRec();
+  };
+  speechSynthesis.speak(u);
+}
+
+// ---------- Confirmation ----------
+function askConfirm(cmd) {
+  pendingConfirm = true; confirming = true; render();
+  $("cmd").textContent = cmd;
+  speak("Should I run " + cmd + "? Say yes or no.");
+}
+function answerConfirm(ok) {
+  pendingConfirm = false; confirming = false; render();
+  send({ type: "confirm", ok });
+}
+$("yes").onclick = () => answerConfirm(true);
+$("no").onclick = () => answerConfirm(false);
+
+// ---------- Screen wake lock ----------
+let wl = null;
+async function lockScreen() { try { if ("wakeLock" in navigator) wl = await navigator.wakeLock.request("screen"); } catch (e) {} }
+function unlockScreen() { try { wl && wl.release(); } catch (e) {} wl = null; }
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && listening) lockScreen();
+});
+
+// ---------- Wake word matching ----------
+let awakeUntil = 0;
+function lev(a, b) {                              // edit distance between two words
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function findWake(text) {                          // first word that sounds like the name
+  const re = /[A-Za-z']+/g; let m;
+  while ((m = re.exec(text))) {
+    const w = m[0].toLowerCase();
+    if (WAKES.includes(w) || (w.length >= 5 && lev(w, NAME.toLowerCase()) <= 2))
+      return { end: m.index + m[0].length };
+  }
+  return null;
+}
+
+// ---------- Speech in ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec;
+function startRec() {
+  if (!SR || !listening || speaking) return;
+  rec = new SR();
+  rec.lang = "en-IN";
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.onresult = ev => {
+    let text = ev.results[ev.results.length - 1][0].transcript.trim();
+    if (!text) return;
+    const low = text.toLowerCase();
+    if (pendingConfirm) {
+      if (/\b(yes|yeah|yep|sure|do it|go ahead|ok|okay)\b/.test(low)) answerConfirm(true);
+      else if (/\b(no|nope|don't|stop|cancel)\b/.test(low)) answerConfirm(false);
+      return;
+    }
+    if (wakeMode) {
+      const now = Date.now();
+      const m = findWake(text);
+      if (m) {
+        text = text.slice(m.end).replace(/^[\s,.!?]+/, "");
+        awakeUntil = now + 10000;               // accept a follow-up sentence for 10 s
+        if (!text) { caption("Yes? I'm listening…"); return; }
+      } else if (now >= awakeUntil) {
+        caption(`Heard: "${text}"  (say "hey ${NAME.toLowerCase()}" first)`);
+        return;
+      }
+    }
+    caption("You: " + text);
+    send({ type: "text", text });
+  };
+  rec.onend = () => { if (listening && !speaking) try { rec.start(); } catch (e) {} };
+  rec.onerror = e => {
+    if (e.error === "not-allowed") { caption("Mic blocked. Allow microphone access."); setListening(false); }
+  };
+  try { rec.start(); if (mode === "idle") setState("listening"); } catch (e) {}
+}
+function stopRec() { if (rec) { rec.onend = null; try { rec.stop(); } catch (e) {} } }
+
+function setListening(on) {
+  listening = on;
+  $("listenBtn").classList.toggle("on", on);
+  $("listenBtn").textContent = on ? "Stop listening" : "Start listening";
+  if (on) {
+    speechSynthesis.speak(new SpeechSynthesisUtterance(""));   // unlock audio on mobile
+    lockScreen(); setState("listening"); startRec(); caption("Listening…");
+  } else {
+    stopRec(); unlockScreen(); setState("idle"); caption(`Tap ${NAME}'s face or "Start listening"`);
+  }
+}
+function toggleListen() {
+  if (!SR) { caption("Speech recognition not supported. Use Chrome."); return; }
+  setListening(!listening);
+}
+$("listenBtn").onclick = toggleListen;
+$("faceWrap").onclick = toggleListen;
+
+$("wakeBtn").onclick = () => {
+  wakeMode = !wakeMode;
+  $("wakeBtn").classList.toggle("on", wakeMode);
+  $("wakeBtn").textContent = "Wake word: " + (wakeMode ? `"hey ${NAME.toLowerCase()}"` : "off");
+};
+
+// ---------- compact mode ----------
+$("compactBtn").onclick = e => { e.stopPropagation(); compact = true; render(); };
+$("expandBtn").onclick = e => { e.stopPropagation(); compact = false; render(); };
+</script>
+</body>
+</html>
